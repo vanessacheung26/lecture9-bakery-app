@@ -1,0 +1,983 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agentic Workflow Builder (Lecture 9)</title>
+<style>
+:root {
+  --ink: #1b2430; --muted: #556070; --line: #c9d1dc; --bg: #f5f7fa; --card: #ffffff;
+  --rule: #eef1f5; --rule-b: #7d889a; --agent: #e4efff; --agent-b: #2f64c8; --human: #fff0dd; --human-b: #c26a00;
+  --teal: #0b7a75; --red: #b42318; --red-bg: #fdecea; --green: #1d7a3a; --focus: #ffbf47; --navy: #13294b;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; color: var(--ink); background: var(--bg); }
+button, select, input, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+header { background: var(--navy); color: #fff; padding: 14px 20px 12px; }
+header .course { font-size: 13px; letter-spacing: .06em; opacity: .85; }
+header h1 { margin: 2px 0 4px; font-size: 26px; }
+header p { margin: 0; max-width: 980px; opacity: .95; }
+.tabs { display: flex; gap: 4px; padding: 0 20px; background: var(--navy); }
+.tabs button { border: 0; border-radius: 8px 8px 0 0; padding: 9px 20px; background: rgba(255,255,255,.12); color: #fff; font-size: 17px; font-weight: 600; cursor: pointer; }
+.tabs button:hover { background: rgba(255,255,255,.22); }
+.tabs button[aria-selected="true"] { background: #e9eef5; color: var(--ink); }
+.statusbar { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center; padding: 8px 20px; background: #e9eef5; border-bottom: 1px solid var(--line); font-size: 15px; }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #999; margin-right: 6px; vertical-align: middle; }
+.dot.ok { background: var(--green); } .dot.bad { background: var(--red); }
+#notice { margin: 10px 20px 0; }
+#notice:empty { display: none; }
+.note { padding: 10px 14px; border-radius: 8px; background: #eaf4ff; border: 1px solid #b8d4f5; }
+.note.bad { background: var(--red-bg); border-color: #f1b0a8; }
+.note.good { background: #e8f6ec; border-color: #a9dab6; }
+main { padding: 12px 20px 90px; }
+.bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.btn { padding: 8px 14px; border: 1px solid #9aa6b6; background: #fff; border-radius: 8px; cursor: pointer; min-height: 40px; }
+.btn:hover { background: #f0f4f9; }
+.btn.primary { background: var(--teal); color: #fff; border-color: var(--teal); font-weight: 600; }
+.btn.primary:hover { background: #096862; }
+.btn.danger { color: var(--red); border-color: #e2a39b; }
+.btn[disabled] { opacity: .5; cursor: default; }
+select, input[type=number], textarea, input[type=text] { border: 1px solid #9aa6b6; border-radius: 6px; padding: 6px 8px; background: #fff; min-height: 38px; }
+.part { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin-top: 12px; }
+.part h2 { margin: 0 0 8px; font-size: 20px; }
+.small { font-size: 14px; color: var(--muted); }
+.treenote { margin-top: 8px; color: var(--muted); font-size: 15px; max-width: 1000px; }
+details summary { cursor: pointer; font-weight: 600; }
+.policy { margin: 8px 0 0; padding-left: 0; list-style: none; }
+.policy li { margin: 4px 0; } .policy b { color: var(--navy); }
+
+/* the three columns */
+.builder { display: grid; grid-template-columns: 230px minmax(0, 1fr) 300px; gap: 14px; align-items: start; }
+@media (max-width: 1150px) { .builder { grid-template-columns: 210px minmax(0, 1fr); } #about { grid-column: 1 / -1; position: static; } }
+@media (max-width: 760px) { .builder { grid-template-columns: 1fr; } #palette { position: static; } }
+#palette, #about { position: sticky; top: 10px; }
+.side { background: #fafbfd; border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+.side h3 { margin: 0 0 8px; font-size: 17px; }
+.pblock { display: flex; gap: 10px; align-items: flex-start; width: 100%; text-align: left; padding: 9px 10px; margin-bottom: 8px;
+          border-radius: 10px; border: 2px solid var(--rule-b); background: var(--rule); cursor: grab; }
+.pblock .t { font-weight: 700; display: block; }
+.pblock .h { font-size: 13px; color: var(--muted); display: block; line-height: 1.3; }
+.pblock.agent { background: var(--agent); border-color: var(--agent-b); }
+.pblock.human { background: var(--human); border-color: var(--human-b); }
+.pblock.picked { box-shadow: 0 0 0 3px var(--focus); }
+.ico { flex: 0 0 28px; width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: #fff; border: 1px solid currentColor; }
+.ico svg { width: 18px; height: 18px; }
+.rule-c { color: #4b5566; } .agent-c { color: var(--agent-b); } .human-c { color: var(--human-b); }
+.memory label { display: flex; gap: 8px; align-items: flex-start; margin: 8px 0; font-size: 15px; }
+.memory input { width: 20px; height: 20px; margin-top: 2px; flex: 0 0 auto; }
+.memory .off { color: var(--muted); font-size: 13px; }
+
+/* the tree */
+#tree { min-height: 300px; overflow-x: auto; padding: 4px 2px 10px; }
+.start { display: inline-block; background: var(--navy); color: #fff; border-radius: 10px; padding: 8px 14px; font-weight: 600; }
+ol.list { list-style: none; margin: 0; padding: 0 0 0 14px; border-left: 3px solid #b7c2d0; }
+ol.list.top { margin-left: 18px; }
+li.item { margin: 0; padding: 0; }
+.block { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; position: relative; margin: 3px 0; padding: 5px 8px; border-radius: 10px;
+         border: 2px solid var(--rule-b); background: var(--rule); width: max-content; max-width: 100%; min-width: 300px; cursor: pointer; }
+.blockerr { color: var(--red); font-size: 14px; font-weight: 600; margin: 0 0 4px 4px; }
+.block::before { content: ""; position: absolute; left: -17px; top: 50%; width: 14px; border-top: 3px solid #b7c2d0; }
+.branch.inline .block::before { display: none; }
+.block.agent { background: var(--agent); border-color: var(--agent-b); }
+.block.human { background: var(--human); border-color: var(--human-b); }
+.block.check { border-style: solid; border-left-width: 6px; }
+.block.selected { box-shadow: 0 0 0 3px var(--focus); }
+.block.bad { border-color: var(--red); background: var(--red-bg); }
+.block .name { font-weight: 700; white-space: nowrap; }
+.block .who { font-size: 13px; color: var(--muted); white-space: nowrap; }
+.block .grow { flex: 1 1 0; min-width: 0; }
+.block .x { border: 1px solid transparent; background: transparent; border-radius: 6px; width: 34px; height: 34px; cursor: pointer; font-size: 20px; line-height: 1; color: #556; }
+.block .x:hover { border-color: #c0c8d4; background: #fff; }
+.block .drag { cursor: grab; color: #7a8494; font-size: 18px; padding: 0 2px; user-select: none; }
+.block select { max-width: 470px; }
+.numwrap { display: inline-flex; align-items: center; gap: 4px; font-size: 14px; }
+.numwrap input { width: 80px; }
+.numwrap input:placeholder-shown { border-color: var(--red); }
+.branch { margin: 2px 0 4px 4px; }
+.branch.inline { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.branch.inline .slot { width: auto; min-height: 30px; padding: 0 6px; opacity: .6; }
+.blabel { display: inline-block; font-weight: 700; font-size: 14px; padding: 2px 10px; border-radius: 12px; margin: 4px 0 0 0; min-width: 44px; text-align: center; }
+.blabel.yes { background: #e3f4e8; color: #1d5e33; border: 1px solid #9fd0ae; }
+.blabel.no { background: #fbe9e7; color: #8a2a1d; border: 1px solid #eab3aa; }
+.slot { display: block; margin: 0; border: 2px dashed transparent; border-radius: 8px; background: transparent; color: var(--teal); cursor: pointer;
+        padding: 0 8px; min-height: 16px; line-height: 14px; font-size: 14px; font-weight: 700; text-align: left; width: 100%; max-width: 760px; opacity: .4; }
+.slot:hover, .slot:focus-visible, body.picking .slot { min-height: 26px; }
+.slot:hover, .slot:focus-visible, .slot.over, body.picking .slot { opacity: 1; border-color: #8fc7c3; background: #effaf9; }
+.slot.end { opacity: 1; border-color: #8fc7c3; background: #f6fcfb; min-height: 40px; }
+.slot.end.need { border-color: var(--red); background: var(--red-bg); color: var(--red); }
+.slot .plus { display: inline-block; width: 20px; }
+.empty-hint { color: var(--muted); margin: 6px 0 0 4px; }
+
+/* the add menu */
+#addmenu { position: absolute; z-index: 20; background: #fff; border: 1px solid #9aa6b6; border-radius: 10px; padding: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.18); width: 290px; }
+#addmenu[hidden] { display: none; }
+#addmenu h4 { margin: 0 0 6px; font-size: 15px; }
+#addmenu .pblock { cursor: pointer; margin-bottom: 6px; }
+#addmenu .cont { display: flex; gap: 8px; margin-top: 6px; }
+#addmenu .cont .btn { flex: 1; }
+
+/* about panel */
+#about .problem { color: var(--red); font-weight: 600; margin-top: 8px; }
+#about .tools { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+#about h4 { margin: 12px 0 4px; font-size: 15px; color: var(--navy); }
+#about ul.outs { margin: 0; padding-left: 20px; }
+#about ul.outs li { margin: 3px 0; }
+.btn.big { font-size: 20px; padding: 14px 28px; min-height: 56px; border-radius: 10px; }
+
+/* run */
+.results { margin-top: 10px; }
+.summary { font-weight: 700; font-size: 18px; margin: 8px 0; }
+.case { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin: 8px 0; background: #fff; }
+.case.right { border-left: 6px solid var(--green); } .case.wrong { border-left: 6px solid var(--red); } .case.err { border-left: 6px solid #999; }
+.case .msg { font-style: italic; }
+.case .out { margin-top: 4px; }
+.case .mark { font-weight: 700; } .case.right .mark { color: var(--green); } .case.wrong .mark { color: var(--red); }
+table.log { border-collapse: collapse; width: 100%; margin-top: 8px; font-size: 14px; }
+table.log th, table.log td { border: 1px solid #d6dce4; padding: 5px 7px; text-align: left; vertical-align: top; }
+table.log th { background: #f0f3f7; }
+table.log td.who-agent { color: var(--agent-b); font-weight: 600; } table.log td.who-human { color: var(--human-b); font-weight: 600; }
+[hidden] { display: none !important; }
+/* Analyze logs (Lecture 9) */
+.part h3 { margin: 18px 0 6px; font-size: 19px; color: var(--navy); }
+.part h4 { margin: 14px 0 6px; font-size: 16px; color: var(--navy); }
+.lead { margin: 0 0 8px; max-width: 980px; }
+details.pol { margin: 6px 0 4px; }
+.tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 6px; max-width: 1100px; }
+@media (max-width: 760px) { .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.tile { background: #f7f9fc; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+.tile-name { font-size: 14px; color: var(--muted); font-weight: 600; }
+.tile-halves { display: grid; grid-template-columns: 1fr 1fr; margin-top: 4px; }
+.th { display: flex; flex-direction: column; padding: 0 10px; min-width: 0; }
+.th.last { padding-left: 0; }
+.th.this { border-left: 1px solid var(--line); }
+.th-w { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; }
+.th.last .th-w { color: #6b7686; } .th.this .th-w { color: var(--teal); }
+.th-n { font-size: 22px; font-weight: 700; line-height: 1.25; white-space: nowrap; }
+.an-each { margin: 22px 0 4px; font-size: 15px; color: var(--muted); }
+.atabs { display: flex; flex-wrap: wrap; border-bottom: 2px solid var(--line); margin: 0 0 12px; }
+.atabs [role="tab"] { border: 0; background: none; padding: 10px 16px; font-size: 16px; font-weight: 600; color: var(--muted); border-bottom: 3px solid transparent; margin-bottom: -2px; cursor: pointer; border-radius: 6px 6px 0 0; }
+.atabs [role="tab"]:hover { color: var(--ink); background: #eef2f7; }
+.atabs [role="tab"][aria-selected="true"] { color: var(--navy); border-bottom-color: var(--teal); background: #e9f6f5; }
+.an-desc { margin: 0 0 10px; font-size: 15px; }
+#an-results, #an-list { overflow-x: auto; }
+.an-filters { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; background: #f3f6fa; border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin-bottom: 10px; justify-items: start; }
+.an-row { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: flex-end; max-width: 100%; }
+.an-f { display: inline-flex; flex-direction: column; gap: 3px; font-size: 14px; color: var(--muted); max-width: min(360px, 100%); }
+.an-flab { font-weight: 600; color: var(--ink); }
+.an-f select { color: var(--ink); max-width: min(360px, 100%); }
+.an-help { font-size: 13px; }
+.switch { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; font-size: 15px; }
+.switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.sw-track { width: 44px; height: 24px; border-radius: 12px; background: #b7c2d0; position: relative; flex: 0 0 auto; transition: background .15s; }
+.sw-track::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: left .15s; }
+.switch input:checked + .sw-track { background: var(--teal); }
+.stars-f { display: flex; align-items: center; gap: 6px; color: var(--ink); }
+.stars-in { width: 4.2em; padding: 5px 6px; border: 1px solid var(--line); border-radius: 6px; background: #fff; font-size: 15px; text-align: center; }
+.switch input:checked + .sw-track::after { left: 23px; }
+.switch input:focus-visible + .sw-track { outline: 3px solid var(--focus); outline-offset: 2px; }
+#an-stale { color: #8a4b00; font-weight: 600; }
+.btn.on { background: var(--navy); color: #fff; border-color: var(--navy); }
+.seg { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+.an-listtitle { margin: 4px 0; }
+table.an-table { border-collapse: collapse; margin-top: 6px; font-size: 15px; }
+table.an-table th, table.an-table td { border: 1px solid #d6dce4; padding: 5px 9px; text-align: left; vertical-align: top; }
+table.an-table th { background: #f0f3f7; font-weight: 600; }
+table.an-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+table.an-list { width: 100%; }
+table.an-list tr[tabindex], .dx-why tr[tabindex] { cursor: pointer; }
+table.an-list tr[tabindex]:hover td, .dx-why tr[tabindex]:hover td { background: #f3f8f8; }
+table.an-list tr.on td, .dx-why tr.on td { background: #fff6dc; }
+.an-msg { max-width: 440px; }
+.stars { color: #b7791f; letter-spacing: 1px; white-space: nowrap; }
+.an-legend { font-size: 14px; margin: 4px 0 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.an-key { display: inline-block; width: 14px; height: 14px; border-radius: 3px; margin-left: 8px; vertical-align: middle; }
+.an-key.last { background: #9aa6b6; } .an-key.this { background: var(--teal); }
+/* Where customers stopped: the workflow drawn with its endings */
+
+.sp-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 6px; }
+.sp-box { background: #fff; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; text-align: left; padding: 0; cursor: pointer; }
+.sp-box:hover { box-shadow: 0 0 0 3px #cfe7e5; }
+.sp-box[aria-pressed="true"] { border-color: var(--navy); box-shadow: 0 0 0 2px var(--navy); }
+.sp-box > .sp-lab { padding: 10px 12px 8px; font-size: 16px; }
+.tr-box { margin-top: 16px; background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px 16px; max-width: 900px; }
+.tr-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 12px; margin-bottom: 10px; }
+.tr-head h3 { margin: 0; font-size: 17px; color: var(--navy); }
+.tr-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 0; }
+.tr-node { flex: 0 0 auto; width: 270px; max-width: 100%; text-align: center; padding: 7px 10px; border-radius: 8px; font-size: 15px; font-weight: 600; }
+.tr-node.agent { background: var(--teal); color: #fff; }
+.tr-node.lookup { background: #dcebf7; color: var(--navy); }
+.tr-node.check { background: #fff; color: var(--navy); border: 2px solid var(--navy); position: relative; }
+.tr-node.check::before { content: ""; display: inline-block; width: 9px; height: 9px; border: 2px solid var(--navy); transform: rotate(45deg); margin-right: 8px; vertical-align: 1px; }
+.tr-link { width: 270px; max-width: 100%; height: 24px; position: relative; }
+.tr-link::before { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; border-left: 2px solid #9aa6b6; }
+.tr-yes { position: absolute; left: calc(50% + 8px); top: 3px; font-size: 12px; font-weight: 700; color: var(--muted); }
+.tr-exit { display: inline-flex; align-items: center; }
+.tr-line { display: inline-block; width: 120px; border-top: 2px solid #9aa6b6; position: relative; margin: 0 8px 0 0; }
+.tr-lab { position: absolute; left: 6px; bottom: 3px; font-size: 12px; font-weight: 700; color: var(--muted); white-space: nowrap; }
+.tr-end { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 150px; padding: 6px 10px; border-radius: 8px; border: 1px dashed #b7c2d0; color: #8792a2; background: #fafbfc; font-size: 14px; text-align: left; }
+.tr-row > .tr-end { width: 270px; max-width: 100%; align-items: center; }
+.tr-end.lit { border: 2px solid var(--navy); background: var(--navy); color: #fff; cursor: pointer; font-weight: 600; }
+.tr-end.lit:hover { box-shadow: 0 0 0 3px #cfe7e5; }
+.tr-end.lit[aria-pressed="true"] { box-shadow: 0 0 0 3px var(--focus); }
+.tr-endname { font-size: 15px; }
+.tr-note { font-size: 12px; font-weight: 400; color: #dfe6f0; }
+.tr-nums { display: flex; gap: 14px; }
+.tr-n { display: inline-flex; flex-direction: column; font-size: 20px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.tr-n small { font-size: 11px; font-weight: 600; color: #c9d4e3; }
+.tr-n.this { color: #8fe0d9; }
+@media (max-width: 600px) { .tr-line { width: 40px; } .tr-exit { margin-left: 24px; } }
+@media (max-width: 1050px) { .sp-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .sp-grid { grid-template-columns: minmax(0, 1fr); } }
+.sp-top { display: block; padding: 10px 10px 8px; flex: 1; }
+.sp-lab { display: block; font-weight: 700; color: var(--navy); font-size: 15px; line-height: 1.25; }
+.sp-why { display: block; margin-top: 4px; font-size: 14px; color: var(--muted); line-height: 1.3; }
+.sp-halves { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--line); }
+.sp-half { display: block; padding: 7px 8px 8px; border-top: 4px solid #9aa6b6; }
+.sp-half.this { border-top-color: var(--teal); border-left: 1px solid var(--line); }
+.sp-wk { display: block; font-size: 12px; color: var(--muted); }
+.sp-n { display: block; font-size: 24px; font-weight: 700; color: var(--navy); line-height: 1.15; font-variant-numeric: tabular-nums; }
+.sp-path { margin-top: 18px; background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; max-width: 1000px; }
+.sp-phead { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 12px; margin-bottom: 8px; }
+.sp-phead h3 { margin: 0; font-size: 17px; color: var(--navy); }
+.sp-cols, .sp-step.check, .sp-step.sp-begin, .sp-step.sp-stop { display: grid; grid-template-columns: minmax(0, 1fr) 80px 80px; gap: 8px; align-items: center; }
+.sp-cols { font-size: 12px; color: var(--muted); padding-left: 30px; } .sp-cols span + span { text-align: right; }
+ol.sp-steps { list-style: none; margin: 0; padding: 0; }
+.sp-step { position: relative; padding: 7px 0 7px 30px; }
+.sp-step::before { content: ""; position: absolute; left: 8px; top: 0; bottom: 0; width: 2px; background: var(--line); }
+.sp-step:first-child::before { top: 50%; } .sp-step:last-child::before { bottom: 50%; }
+.sp-step::after { content: ""; position: absolute; left: 3px; top: 50%; margin-top: -6px; width: 12px; height: 12px; border-radius: 50%; background: #fff; border: 2px solid var(--navy); }
+.sp-step.sp-info { color: var(--muted); font-size: 14px; }
+.sp-step.sp-info::after { width: 8px; height: 8px; left: 5px; margin-top: -4px; border-color: #9aa6b6; background: #9aa6b6; }
+.sp-step.sp-begin::after, .sp-step.sp-stop::after { background: var(--navy); }
+.sp-q { font-weight: 600; color: var(--navy); }
+.sp-pill { display: inline-block; margin-left: 8px; padding: 0 9px; border-radius: 999px; font-size: 12px; font-weight: 700; border: 1px solid var(--navy); vertical-align: 1px; }
+.sp-pill.yes { background: var(--navy); color: #fff; } .sp-pill.no { background: #fff; color: var(--navy); }
+.sp-gloss { font-size: 14px; color: var(--muted); }
+.sp-v { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; color: #5d6b80; } .sp-v.this { color: var(--teal); }
+@media (max-width: 700px) {
+  .sp-cols, .sp-step.check, .sp-step.sp-begin, .sp-step.sp-stop { grid-template-columns: minmax(0, 1fr) 56px 56px; }
+}
+.blabel { display: inline-block; font-weight: 700; font-size: 14px; padding: 1px 10px; border-radius: 12px; min-width: 40px; text-align: center; }
+/* Break it down */
+/* Categorical Breakdown (a histogram) */
+.hg-card { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px 12px; max-width: 900px; }
+.hg-legend { display: flex; flex-wrap: wrap; gap: 4px 20px; margin-bottom: 10px; font-size: 15px; }
+.hg-key i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; background: #9aa6b6; margin-right: 6px; vertical-align: -1px; }
+.hg-key.this i { background: var(--teal); }
+.hg-chart { display: flex; gap: 12px; align-items: flex-end; }
+.hg-bin { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; }
+.hg-bars { display: flex; gap: 2px; align-items: flex-end; justify-content: center; width: 100%; height: 216px; border-bottom: 1px solid #8a96a8; }
+.hg-bar { flex: 0 1 36px; min-width: 14px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; padding: 0; border: 0; background: none; font: inherit; color: var(--ink); }
+button.hg-bar { cursor: pointer; }
+.hg-fill { display: block; width: 100%; border-radius: 4px 4px 0 0; background: #9aa6b6; }
+.hg-bar.this .hg-fill { background: var(--teal); }
+button.hg-bar:hover .hg-fill { filter: brightness(.9); }
+.hg-bar[aria-pressed="true"] .hg-fill { outline: 3px solid var(--focus); outline-offset: 1px; }
+.hg-n { font-size: 13px; font-weight: 600; margin-bottom: 2px; font-variant-numeric: tabular-nums; }
+.hg-lab { font-size: 13px; color: var(--muted); text-align: center; line-height: 1.2; margin-top: 6px; }
+@media (max-width: 560px) { .hg-card { padding: 10px 8px 12px; } .hg-chart { gap: 3px; } .hg-n { font-size: 10px; } .hg-lab { font-size: 11px; } .hg-bar { min-width: 10px; } }
+.btn.swap { font-size: 26px; line-height: 1; min-width: 56px; min-height: 56px; border-radius: 10px; }
+/* the chat as a story */
+.story { display: grid; gap: 10px; }
+.st-head { font-size: 15px; }
+.bubble { border-radius: 14px; padding: 9px 13px; max-width: 520px; }
+.bubble.cust { background: #eef1f5; border: 1px solid #d6dce4; border-bottom-left-radius: 4px; }
+.bubble.agent { background: var(--agent); border: 1px solid #b8cdf0; justify-self: end; border-bottom-right-radius: 4px; }
+.b-who { font-size: 13px; color: var(--muted); font-weight: 600; }
+.b-text { font-size: 17px; }
+.bubble.cust .b-text { font-style: italic; }
+.receipt { background: #fffdf6; border: 1px dashed #c9b98e; border-radius: 8px; padding: 9px 12px; max-width: 520px; font-size: 15px; }
+.rc-title { font-weight: 700; margin-bottom: 4px; }
+table.rc-items { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
+table.rc-items td { padding: 2px 0; border-bottom: 1px dotted #ddd2b0; } table.rc-items td.num { text-align: right; }
+.rc-line { margin-top: 2px; }
+.st-sub { font-weight: 700; color: var(--navy); margin-top: 4px; }
+ol.steps { list-style: none; margin: 0; padding: 0 0 0 6px; border-left: 2px solid #d6dce4; }
+li.step { display: grid; grid-template-columns: 18px 1fr; gap: 8px; margin: 0 0 8px -12px; }
+li.step .dot, .dot-k { display: inline-block; width: 14px; height: 14px; border-radius: 50%; margin-top: 4px; background: #8c96a5; border: 2px solid #fff; box-shadow: 0 0 0 1px #8c96a5; }
+.dot-k { margin: 0 2px -2px 6px; }
+li.step.agent .dot, .dot-k.agent { background: var(--agent-b); box-shadow: 0 0 0 1px var(--agent-b); }
+li.step.human .dot, .dot-k.human { background: var(--human-b); box-shadow: 0 0 0 1px var(--human-b); }
+.step-name { font-weight: 600; }
+.step-io { font-size: 14px; color: var(--muted); }
+.step-who { font-weight: 600; } li.step.agent .step-who { color: var(--agent-b); }
+.step-out { font-size: 14px; }
+.st-end { font-size: 17px; padding: 8px 12px; background: #f0f3f7; border-radius: 8px; }
+.st-rate { font-size: 16px; }
+.st-compare { border: 2px solid var(--navy); border-radius: 10px; padding: 9px 12px; background: #f4f7fb; display: grid; gap: 3px; }
+/* the drawer */
+#drawer-back { position: fixed; inset: 0; background: rgba(19, 41, 75, .35); z-index: 30; }
+#drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(640px, 100%); background: #fff; z-index: 31; overflow-y: auto; padding: 12px 18px 40px; box-shadow: -6px 0 24px rgba(0,0,0,.2); }
+body.drawer-open { overflow: hidden; }
+.dr-nav { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; position: sticky; top: -12px; background: #fff; padding: 8px 0; border-bottom: 1px solid var(--line); margin-bottom: 10px; z-index: 1; }
+.dr-nav #dr-close { margin-left: auto; }
+/* Differential analysis */
+.dx-wrap { overflow-x: auto; }
+table.dx th, table.dx td { padding: 7px 12px; vertical-align: middle; }
+table.dx th[scope="col"] { text-align: right; }
+table.dx td.dx-blank { border: 0; background: transparent; }
+table.dx th.dx-w2, table.dx th.dx-w1 { text-align: center; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+table.dx th.dx-w2 { background: #e3f2f1; color: var(--teal); border-bottom: 3px solid var(--teal); }
+table.dx th.dx-w1 { background: #eef1f5; color: #5d6b80; border-right: 3px solid #9aa6b6; width: 96px; line-height: 1.3; }
+table.dx th.dx-all { vertical-align: bottom; }
+table.dx td.zero { color: #a3adbb; }
+table.dx td.dx-tot, table.dx tr.dx-tot th, table.dx tr.dx-tot td { background: #f7f9fc; font-weight: 700; }
+.dx-cell { font: inherit; font-weight: 700; padding: 3px 12px; border: 1px solid var(--navy); border-radius: 6px; background: #fff; color: var(--navy); cursor: pointer; font-variant-numeric: tabular-nums; }
+.dx-cell:hover { box-shadow: 0 0 0 3px #cfe7e5; }
+.dx-cell[aria-pressed="true"] { background: var(--navy); color: #fff; }
+.dx-whybox { margin-top: 16px; background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px 14px; max-width: 900px; }
+.dx-whybox h3 { margin: 0 0 4px; font-size: 17px; color: var(--navy); }
+table.dx-why { width: 100%; }
+.dx-cats { margin-top: 10px; max-width: 620px; }
+.dx-cats-t { font-weight: 700; font-size: 15px; margin-bottom: 4px; }
+.dx-cat { display: grid; grid-template-columns: minmax(110px, 160px) 1fr 52px; gap: 10px; align-items: center; padding: 3px 0; font-size: 15px; }
+.dx-cat-b { background: #eef1f5; height: 18px; border-radius: 3px; overflow: hidden; }
+.dx-cat-b span { display: block; height: 100%; background: #5d6b80; }
+.dx-cat-n { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+.st-last { color: var(--muted); }
+.dx-dollars { margin: 2px 0 8px; font-size: 16px; }
+#sw-instructor { border: 2px dashed var(--human-b); border-radius: 12px; padding: 10px 14px; margin-top: 18px; background: #fffaf3; }
+</style>
+</head>
+<body>
+<header>
+  <div class="course">MGOC50 · LECTURE 9 · OBSERVABILITY</div>
+  <h1>Agentic Workflow Builder</h1>
+  <p>The DoorDash refund workflow and two weeks of its chat logs. Nothing is ever really refunded.</p>
+</header>
+<nav class="tabs" role="tablist" aria-label="Parts of the page">
+  <button role="tab" id="tab-build-btn" aria-controls="tab-build" aria-selected="true">Build and run</button>
+  <button role="tab" id="tab-analyze-btn" aria-controls="tab-analyze" aria-selected="false">Analyze logs</button>
+</nav>
+<div class="statusbar">
+  <span><span id="dot" class="dot"></span>The agent: <b>qwen3:1.7b</b> (Ollama, on this laptop)</span>
+  <span id="status">Checking Ollama…</span>
+</div>
+<div id="notice" role="status" aria-live="polite"></div>
+<main>
+<div id="tab-build" role="tabpanel" aria-labelledby="tab-build-btn">
+
+  <section class="part">
+    <h2>1. Build the tree</h2>
+    <p class="small" style="margin-top:0">Click a <b>+</b> in the tree and pick a block, or drag a block from the left onto a <b>+</b>. Then choose what goes in it. A Check splits the tree into <b>yes</b> and <b>no</b>. Every path ends with an <b>Action</b>: refund, reorder, reject or human escalation. Click a block to see what it does.</p>
+    <div class="bar" style="margin-bottom:10px">
+      <button class="btn" id="undobtn">Undo</button>
+      <button class="btn" id="clearbtn">Clear the tree</button>
+      <button class="btn" id="prodbtn">Load the workflow that runs now</button>
+      <button class="btn" id="checkbtn" hidden>Check my tree</button>
+    </div>
+    <div id="checkres" aria-live="polite"></div>
+    <div class="builder">
+      <aside id="palette" class="side" aria-label="Blocks">
+        <h3>Blocks</h3>
+        <div id="pblocks"></div>
+        <p class="small" style="margin:2px 0 0">Grey: a fixed rule. Blue: the agent. Orange: a human.</p>
+        <h3 style="margin-top:14px">Memory</h3>
+        <div class="memory" id="memory"></div>
+      </aside>
+      <div id="treewrap">
+        <div class="start">Start: a customer writes from an order's help page</div>
+        <div id="tree"></div>
+      </div>
+      <aside id="about" class="side" aria-live="polite" aria-label="The selected block"></aside>
+    </div>
+  </section>
+
+  <section class="part">
+    <h2>2. Run it</h2>
+    <button class="btn primary big" id="createbtn" aria-expanded="false" aria-controls="own">Create agentic workflow</button>
+    <div class="own" id="own" hidden>
+      <label>Enter your message<textarea id="ownmsg" maxlength="500"></textarea></label>
+      <label>Enter order number<input type="text" id="ownorder" inputmode="numeric" maxlength="8" placeholder="e.g. 6120" autocomplete="off"></label>
+      <div class="bar">
+        <button class="btn primary" id="runbtn">Run</button>
+        <button class="btn" id="stopbtn" disabled>Stop</button>
+        <span id="runstatus" class="small"></span>
+      </div>
+    </div>
+    <div class="results" id="results"></div>
+  </section>
+
+  <section class="part">
+    <details id="savedpart"><summary>3. Saved runs</summary>
+      <p class="small">Runs saved before class. They open without calling the agent, so everyone reads the same rows.</p>
+      <div id="savedlist"></div>
+      <div id="savedview"></div>
+    </details>
+  </section>
+
+</div>
+<div id="tab-analyze" role="tabpanel" aria-labelledby="tab-analyze-btn" hidden>
+  <section class="part" id="analyze">
+    <h2>Analyze logs</h2>
+    <p class="lead" id="an-intro"></p>
+    <details class="pol"><summary>The refund policy</summary><ul class="policy2 an-policy"></ul></details>
+    <div id="an-tiles"></div>
+
+    <p class="an-each">Each approach analyzes the data one way.</p>
+    <div class="atabs" id="an-tabs" role="tablist" aria-label="Approaches"></div>
+
+    <div id="an-panel" role="tabpanel">
+      <p class="an-desc" id="an-desc"></p>
+      <div id="an-common">
+        <div class="an-filters" id="an-filters"></div>
+        <div class="bar"><button class="btn primary big" id="an-show">Show results</button><button class="btn swap" id="an-swap" hidden>⇄</button><button class="btn" id="an-clear">Clear filters</button><span id="an-stale" role="status"></span></div>
+        <div id="an-step3" hidden>
+          <h3>Results</h3>
+          <p class="small" id="an-res-how" style="margin:0 0 6px"></p>
+          <div id="an-results" aria-live="polite"></div>
+        </div>
+        <div id="an-step4" hidden>
+          <h3>Chats</h3>
+          <div id="an-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="sw-instructor" hidden></div>
+    <details style="margin-top:18px"><summary>Download the logs</summary>
+      <div class="bar" style="margin-top:6px"><button class="btn" id="an-download">Download the logs (spreadsheet file)</button><span class="small">Both weeks, one row per chat, for Claude Code or Codex.</span></div>
+    </details>
+  </section>
+</div>
+</main>
+<div id="drawer-back" hidden></div>
+<aside id="drawer" role="dialog" aria-modal="true" aria-label="One chat" hidden><div id="dr-body"></div></aside>
+<div class="copyall"><button class="btn" id="copyall">Copy all answers</button><span id="copied" class="small"></span></div>
+<div id="addmenu" hidden role="dialog" aria-label="Add a block"></div>
+
+<script src="data.js"></script>
+<script src="engine.js"></script>
+<script src="designs.js"></script>
+<script src="policy.js"></script>
+<script src="logs.js"></script>
+<script>
+'use strict';
+const INSTRUCTOR = false; // the instructor copy sets this to true: it starts with the worked example and can load trees
+const W = window.WB, DATA = window.DATA, DESIGNS = window.DESIGNS;
+const $ = id => document.getElementById(id);
+function el(tag, attrs = {}, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (v == null || v === false) continue;
+    if (k === 'text') e.textContent = v;
+    else if (k === 'html') e.innerHTML = v;
+    else if (k === 'class') e.className = v;
+    else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
+    else e.setAttribute(k, v === true ? '' : v);
+  }
+  for (const c of kids.flat()) if (c != null) e.append(c.nodeType ? c : document.createTextNode(String(c)));
+  return e;
+}
+const ICONS = {
+  lookup: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg>',
+  agent: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="8" width="14" height="11" rx="3"/><path d="M12 4v4M9 13h.01M15 13h.01M9.5 16.5h5"/></svg>',
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M12 3l8 9-8 9-8-9z"/></svg>',
+  act: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>',
+  human: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4.5-6 8-6s7 2 8 6"/></svg>',
+};
+const WHO_CLASS = {rule: 'rule-c', agent: 'agent-c', human: 'human-c'};
+const HELP = {
+  lookup: 'Open a record: Order record (items ordered), Delivery record (was it delivered), Driver chat or Past cases.',
+  agent: 'The agent reads the message: its category, or which items match the order.',
+  check: 'A yes/no question. Splits the tree into yes and no.',
+  act: 'The final action: refund, reorder, reject or human escalation. Ends the path.',
+};
+const SHORT = {order: 'Look up: Order record', delivery: 'Look up: Delivery record', chat: 'Look up: Driver chat', past: 'Look up: Past cases',
+               read: 'Ask the agent: what is the message about', match: 'Ask the agent: which items match', amount: 'the agent\'s amount'};
+const whoText = b => W.whoOf(b);
+const icon = (type, who) => el('span', {class: 'ico ' + WHO_CLASS[who || W.BLOCKS[type].who], html: ICONS[type], 'aria-hidden': 'true'});
+const blockIcon = b => b.type === 'act' && b.action === 'human' ? icon('human', 'human') : icon(b.type, W.whoKey(b));
+
+// ===== State =====
+let design = W.newDesign('My tree');
+let selected = null;   // id of the selected block
+let picked = null;     // a block type picked in the palette, waiting for a click on a +
+let undoStack = [];
+let lastRun = null, lastCheck = null, running = null;
+const STORE_KEY = 'awb-l9-tree-v2'; // the Lecture 9 copy keeps its own tree, so it never overwrites the Lecture 8 class tree
+
+function notice(text, kind) { const n = $('notice'); n.replaceChildren(); if (text) n.append(el('div', {class: 'note' + (kind ? ' ' + kind : ''), text})); }
+function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(design)); } catch (e) { /* no storage: fine */ } }
+function snapshot() { undoStack.push(JSON.stringify(design)); if (undoStack.length > 60) undoStack.shift(); }
+function changed() { save(); render(); }
+
+// ===== Palette and memory =====
+function renderPalette() {
+  const box = $('pblocks');
+  box.replaceChildren();
+  for (const type of W.ORDER_OF_BLOCKS) {
+    const B = W.BLOCKS[type];
+    const b = el('button', {class: 'pblock ' + B.who + (picked === type ? ' picked' : ''), draggable: 'true', 'aria-pressed': picked === type ? 'true' : 'false',
+      title: 'Click, then click a + in the tree. Or drag it onto a +.',
+      onclick: () => { picked = picked === type ? null : type; document.body.classList.toggle('picking', !!picked); renderPalette();
+                       notice(picked ? `Now click a + in the tree to add "${B.name}" there. Click the block again to cancel.` : ''); },
+      ondragstart: ev => { ev.dataTransfer.setData('text/plain', 'new:' + type); ev.dataTransfer.effectAllowed = 'copy'; setTimeout(() => document.body.classList.add('picking'), 0); },
+      ondragend: () => { if (!picked) document.body.classList.remove('picking'); }},
+      icon(type), el('span', {}, el('span', {class: 't', text: B.name}), el('span', {class: 'h', text: HELP[type]})));
+    box.append(b);
+  }
+}
+function renderMemory() {
+  const box = $('memory');
+  box.replaceChildren();
+  // one memory toggle: memory on means past cases (his 16 Nov 06:27 UTC ruling; the other two switches are gone)
+  design.memory.conversation = false; design.memory.caseRecord = false;
+  const items = [
+    ['pastCases', 'Memory on', 'Look up: Past cases returns this customer\'s refunds and reorders in other chats. Off: no memory.'],
+  ];
+  for (const [k, name, help] of items) {
+    const cb = el('input', {type: 'checkbox', onchange: e => { snapshot(); design.memory[k] = e.target.checked; changed(); }});
+    cb.checked = !!design.memory[k];
+    box.append(el('label', {}, cb, el('span', {}, el('b', {text: name}), el('br'), el('span', {class: 'off', text: help}))));
+  }
+  const any = Object.values(design.memory).some(Boolean);
+  box.append(el('div', {class: 'off', text: any ? '' : 'Memory is off: Look up: Past cases finds nothing.'}));
+}
+
+// ===== The tree =====
+function defaultsFor(type, have, path) {
+  const used = new Set(path.filter(b => b.type === 'check').map(b => b.check));
+  if (type === 'lookup') return {file: ['order', 'delivery', 'chat', 'past'].find(f => !have.has(f)) || 'order'};
+  if (type === 'agent') return {job: !have.has('read') ? 'read' : (have.has('order') && !have.has('match') ? 'match' : 'read')};
+  if (type === 'check') {
+    // the first choice is the next question of the class's refund tree (W.CHECK_ORDER) that this place can ask
+    const ok = W.CHECK_ORDER.filter(c => have.has(W.CHECKS[c].needs));
+    return {check: ok.find(c => !used.has(c)) || ok[0] || 'allergy'};
+  }
+  if (type === 'act') return {action: 'refund', choice: have.has('match') ? 'items' : 'total'};
+  return {};
+}
+function placePath(ref, index) {
+  const list = W.listAt(design, ref) || [];
+  let above = [];
+  if (ref.parent) { above = (W.pathTo(design, ref.parent) || []).concat([W.findBlock(design, ref.parent).block]); }
+  return above.concat(list.slice(0, index));
+}
+function addAt(type, ref, index, continueOn) {
+  const path = placePath(ref, index);
+  const have = new Set(path.map(W.providerOf).filter(Boolean));
+  const b = W.newBlock(type, defaultsFor(type, have, path));
+  if (b.type === 'check' && W.CHECKS[b.check].num != null) b.num = null; // a blank the student fills in
+  snapshot();
+  const r = W.insertBlock(design, ref, index, b, continueOn);
+  if (!r.ok) { undoStack.pop(); notice(r.msg, 'bad'); return; }
+  selected = b.id; picked = null; document.body.classList.remove('picking');
+  notice('');
+  changed(); renderPalette();
+  const node = document.querySelector(`[data-id="${b.id}"] select`);
+  if (node) node.focus();
+}
+// Adding at a place: if a Check goes above other blocks, ask which answer the blocks below continue on.
+function requestAdd(type, ref, index, anchor) {
+  const list = W.listAt(design, ref) || [];
+  if (type === 'check' && index < list.length) return openContinueMenu(ref, index, anchor, 'new:check');
+  addAt(type, ref, index);
+}
+function slot(ref, index, isEnd, need, label) {
+  const s = el('button', {class: 'slot' + (isEnd ? ' end' : '') + (need ? ' need' : ''), 'data-ref': JSON.stringify(ref), 'data-index': index,
+    'aria-label': label,
+    onclick: ev => { if (picked) requestAdd(picked, ref, index, ev.currentTarget); else openAddMenu(ref, index, ev.currentTarget); }},
+    el('span', {class: 'plus', text: '+'}), isEnd ? (need ? 'What happens here? Add a block (end with an Action)' : 'Add a block') : '');
+  s.addEventListener('dragover', ev => { ev.preventDefault(); s.classList.add('over'); });
+  s.addEventListener('dragleave', () => s.classList.remove('over'));
+  s.addEventListener('drop', ev => {
+    ev.preventDefault(); s.classList.remove('over'); document.body.classList.remove('picking');
+    const data = ev.dataTransfer.getData('text/plain');
+    if (data.startsWith('new:')) requestAdd(data.slice(4), ref, index, s);
+    else if (data.startsWith('move:')) requestMove(data.slice(5), ref, index, s);
+  });
+  return s;
+}
+function requestMove(id, ref, index, anchor) {
+  const f = W.findBlock(design, id);
+  if (!f) return;
+  const list = W.listAt(design, ref) || [];
+  let below = list.slice(index).filter(b => b.id !== id);
+  if (f.block.type === 'check' && below.length) return openContinueMenu(ref, index, anchor, 'move:' + id);
+  doMove(id, ref, index);
+}
+function doMove(id, ref, index, continueOn) {
+  snapshot();
+  const r = W.moveBlock(design, id, ref, index, continueOn);
+  if (!r.ok) { undoStack.pop(); notice(r.msg, 'bad'); return; }
+  selected = id; notice(''); changed();
+}
+function renderTree() {
+  const box = $('tree');
+  box.replaceChildren();
+  const v = W.validate(design);
+  const probs = {}; const endProbs = new Set();
+  for (const p of v.problems) { if (p.end) endProbs.add(JSON.stringify(p.ref)); else (probs[p.id] = probs[p.id] || []).push(p.msg); }
+  const top = renderList(design.tree, {parent: null, branch: null}, probs, endProbs);
+  top.classList.add('top');
+  box.append(top);
+  if (!design.tree.length) box.append(el('p', {class: 'empty-hint', text: 'Empty tree. Click the + above, or drag a block from the left onto it.'}));
+}
+function renderList(list, ref, probs, endProbs) {
+  const ol = el('ol', {class: 'list'});
+  for (let i = 0; i < list.length; i++) {
+    const b = list[i];
+    const li = el('li', {class: 'item'});
+    li.append(slot(ref, i, false, false, `Add a block above ${W.blockText(b)}`));
+    li.append(renderBlock(b, probs));
+    if (b.type === 'check') {
+      for (const br of ['yes', 'no']) {
+        const sub = {parent: b.id, branch: br};
+        const lab = el('span', {class: 'blabel ' + br, text: br});
+        if (b[br].length === 1 && W.isEnding(b[br][0])) {
+          li.append(el('div', {class: 'branch inline'}, lab, slot(sub, 0, false, false, `Add a block above ${W.blockText(b[br][0])}`), renderBlock(b[br][0], probs)));
+        } else li.append(el('div', {class: 'branch'}, lab, renderList(b[br], sub, probs, endProbs)));
+      }
+    }
+    ol.append(li);
+  }
+  const last = list[list.length - 1];
+  if (!W.closes(last)) {
+    const need = endProbs.has(JSON.stringify(ref));
+    ol.append(el('li', {class: 'item'}, slot(ref, list.length, true, need, 'Add a block at the end of this path')));
+  }
+  return ol;
+}
+let measureCtx = null;
+function textWidth(text) {
+  if (!measureCtx) { measureCtx = document.createElement('canvas').getContext('2d'); const cs = getComputedStyle(document.body); measureCtx.font = `${cs.fontSize} ${cs.fontFamily}`; }
+  return measureCtx.measureText(text).width;
+}
+function choiceSelect(label, options, value, onchange) {
+  const s = el('select', {'aria-label': label, onchange: e => onchange(e.target.value), onclick: e => e.stopPropagation()});
+  for (const o of options) { const op = el('option', {value: o.value, text: o.text}); if (o.disabled) op.disabled = true; if (o.value === value) op.selected = true; s.append(op); }
+  const chosen = options.find(o => o.value === value) || options[0];
+  if (chosen) s.style.width = Math.ceil(textWidth(chosen.text) + 44) + 'px'; // as wide as the chosen answer, not the longest option
+  return s;
+}
+function selectQuiet(id) {
+  if (selected === id) return;
+  selected = id;
+  document.querySelectorAll('#tree .block.selected').forEach(n => n.classList.remove('selected'));
+  const n = document.querySelector(`#tree .block[data-id="${id}"]`); if (n) n.classList.add('selected');
+  renderAbout();
+}
+function setField(b, k, v) { snapshot(); b[k] = v; changed(); }
+function renderBlock(b, probs) {
+  const B = W.BLOCKS[b.type];
+  const have = W.providersAbove(design, b.id);
+  const card = el('div', {class: 'block ' + W.whoKey(b) + (b.type === 'check' ? ' check' : '') + (selected === b.id ? ' selected' : '') + (probs[b.id] ? ' bad' : ''),
+    'data-id': b.id, draggable: 'true', tabindex: '0', role: 'group', 'aria-label': `${W.blockText(b)} (${whoText(b)})`,
+    onclick: () => { selected = b.id; renderTree(); renderAbout(); },
+    onkeydown: e => { if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) { e.preventDefault(); selected = b.id; renderTree(); renderAbout(); } },
+    ondragstart: ev => { ev.stopPropagation(); ev.dataTransfer.setData('text/plain', 'move:' + b.id); ev.dataTransfer.effectAllowed = 'move'; setTimeout(() => document.body.classList.add('picking'), 0); }, // Chrome drops a drag whose source moves inside dragstart
+    ondragend: () => document.body.classList.remove('picking')});
+  // choosing in a dropdown also selects the block (shows what it does) without redrawing the open dropdown
+  card.addEventListener('focusin', e => { if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT') selectQuiet(b.id); });
+  card.append(el('span', {class: 'drag', 'aria-hidden': 'true', title: 'Drag to move', text: '⠿'}), blockIcon(b),
+              el('span', {class: 'name', text: B.name}));
+  if (b.type === 'lookup') {
+    card.append(choiceSelect('Which record', Object.entries(W.FILES).map(([k, F]) => ({value: k, text: `${F.name}: ${F.what}`})), b.file, v => setField(b, 'file', v)));
+  } else if (b.type === 'agent') {
+    const opts = Object.entries(W.JOBS).filter(([k, J]) => !J.hidden || k === b.job).map(([k, J]) => ({value: k, text: J.name}));
+    card.append(choiceSelect('Which job', opts, b.job, v => setField(b, 'job', v)));
+  } else if (b.type === 'check') {
+    const opts = W.CHECK_ORDER.map(k => {
+      const C = W.CHECKS[k];
+      const ok = have.has(C.needs);
+      return {value: k, text: C.q.replace('{n}', '___') + (ok ? '' : ` (needs ${SHORT[C.needs]})`), disabled: !ok && k !== b.check};
+    });
+    card.append(choiceSelect('Which question', opts, b.check, v => { snapshot(); b.check = v; b.num = null; changed(); }));
+    if (W.CHECKS[b.check].num != null) {
+      const inp = el('input', {type: 'number', min: '0', step: 'any', value: b.num == null ? '' : b.num, placeholder: '___', 'aria-label': 'Fill in the blank', onclick: e => e.stopPropagation(),
+        onchange: e => { snapshot(); b.num = e.target.value === '' ? null : Number(e.target.value); changed(); }});
+      card.append(el('span', {class: 'numwrap'}, '___ =', inp));
+    }
+  } else if (b.type === 'act') {
+    card.append(choiceSelect('Which action', Object.entries(W.ACTIONS).map(([k, A]) => ({value: k, text: A.name})), b.action, v => {
+      snapshot(); b.action = v; const ch = W.ACTIONS[v].choices;
+      b.choice = ch ? ((ch.items && have.has('match')) ? 'items' : (Object.keys(ch).find(c => have.has(ch[c].needs) && c !== 'agent') || Object.keys(ch)[0])) : null; changed(); }));
+    const A = W.ACTIONS[b.action];
+    if (A.choices) {
+      const opts = Object.entries(A.choices).filter(([k, c]) => k !== 'agent' || have.has('amount') || b.choice === 'agent')
+        .map(([k, c]) => ({value: k, text: c.label + (have.has(c.needs) ? '' : ` (needs ${SHORT[c.needs]})`), disabled: !have.has(c.needs) && k !== b.choice}));
+      card.append(choiceSelect(A.choiceLabel, opts, b.choice, v => setField(b, 'choice', v)));
+    }
+  }
+  card.append(el('span', {class: 'grow'}));
+  card.append(el('button', {class: 'x', 'aria-label': 'Delete ' + W.blockText(b) + (b.type === 'check' ? ' and its branches' : ''), title: 'Delete',
+    onclick: e => { e.stopPropagation(); deleteBlock(b.id); }, text: '×'}));
+  if (!probs[b.id]) return card;
+  const frag = document.createDocumentFragment();
+  frag.append(card, el('div', {class: 'blockerr', role: 'alert', text: probs[b.id].join(' ')}));
+  return frag;
+}
+function deleteBlock(id) {
+  const f = W.findBlock(design, id);
+  if (!f) return;
+  snapshot();
+  W.removeBlock(design, id);
+  if (selected === id) selected = null;
+  const n = f.block.type === 'check' ? W.allBlocks(f.block.yes.concat(f.block.no)).length : 0;
+  notice(`Deleted ${W.blockText(f.block)}${n ? ` and the ${n} block${n > 1 ? 's' : ''} in its branches` : ''}. Undo brings it back.`);
+  changed();
+}
+
+// ===== The add menu =====
+function placeMenu(anchor) {
+  const m = $('addmenu');
+  const r = anchor.getBoundingClientRect();
+  m.style.left = Math.max(8, Math.min(window.scrollX + r.left, window.scrollX + document.documentElement.clientWidth - 310)) + 'px';
+  m.style.top = (window.scrollY + r.bottom + 4) + 'px';
+  m.hidden = false;
+  const first = m.querySelector('button'); if (first) first.focus();
+}
+function closeMenu() { const m = $('addmenu'); if (!m.hidden) { m.hidden = true; m.replaceChildren(); } }
+function openAddMenu(ref, index, anchor) {
+  const m = $('addmenu');
+  m.replaceChildren(el('h4', {text: 'Add a block here'}));
+  const list = W.listAt(design, ref) || [];
+  for (const type of W.ORDER_OF_BLOCKS) {
+    const B = W.BLOCKS[type];
+    const endingBlocked = W.isEnding({type}) && index < list.length;
+    const btn = el('button', {class: 'pblock ' + B.who, disabled: endingBlocked || null, title: endingBlocked ? 'An ending must be the last block of its path.' : '',
+      onclick: () => { closeMenu(); requestAdd(type, ref, index, anchor); }},
+      icon(type), el('span', {}, el('span', {class: 't', text: B.name}), el('span', {class: 'h', text: endingBlocked ? 'Only at the end of a path.' : HELP[type]})));
+    m.append(btn);
+  }
+  m.append(el('button', {class: 'btn', style: 'width:100%', text: 'Cancel', onclick: () => { closeMenu(); anchor.focus(); }}));
+  placeMenu(anchor);
+}
+function openContinueMenu(ref, index, anchor, what) {
+  const m = $('addmenu');
+  const list = W.listAt(design, ref) || [];
+  const below = list.slice(index).filter(b => what !== 'move:' + b.id);
+  m.replaceChildren(el('h4', {text: 'A Check splits the tree in two.'}),
+    el('p', {class: 'small', style: 'margin:0', text: `The ${below.length} block${below.length > 1 ? 's' : ''} below (${below.map(W.blockText).join('; ')}) should go under which answer?`}));
+  const go = br => { closeMenu(); if (what === 'new:check') addAt('check', ref, index, br); else doMove(what.slice(5), ref, index, br); };
+  // a Check being moved can only take the blocks below under an answer that has nothing under it yet
+  const moving = what.startsWith('move:') ? (W.findBlock(design, what.slice(5)) || {}).block : null;
+  const full = br => !!(moving && moving[br].length);
+  if (full('yes') && full('no')) m.append(el('p', {class: 'small', text: 'This Check already has blocks under both answers. Move it to the bottom of a branch instead.'}));
+  m.append(el('div', {class: 'cont'}, el('button', {class: 'btn', text: 'Under yes', disabled: full('yes') || null, title: full('yes') ? 'It already has blocks under yes' : null, onclick: () => go('yes')}),
+    el('button', {class: 'btn', text: 'Under no', disabled: full('no') || null, title: full('no') ? 'It already has blocks under no' : null, onclick: () => go('no')})));
+  m.append(el('button', {class: 'btn', style: 'width:100%;margin-top:6px', text: 'Cancel', onclick: () => { closeMenu(); anchor.focus(); }}));
+  placeMenu(anchor);
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeMenu(); if (picked) { picked = null; document.body.classList.remove('picking'); renderPalette(); notice(''); } } });
+document.addEventListener('click', e => { const m = $('addmenu'); if (!document.contains(e.target)) return; if (!m.hidden && !m.contains(e.target) && !e.target.closest('.slot')) closeMenu(); });
+
+// ===== The selected block: what it does =====
+function renderAbout() {
+  const box = $('about');
+  box.replaceChildren();
+  const f = selected && W.findBlock(design, selected);
+  if (!f) {
+    box.append(el('h3', {text: 'What a block does'}), el('p', {class: 'small', text: 'Click a block in the tree to see what it does and its possible outputs.'}));
+    return;
+  }
+  const b = f.block, e = W.explain(design, b.id);
+  box.append(el('h3', {text: e.title}), el('h4', {text: 'What it does'}), el('p', {style: 'margin:0', text: e.does}),
+    el('h4', {text: e.outputsTitle}), el('ul', {class: 'outs'}, e.outputs.map(o => el('li', {text: o}))));
+  if (e.problem) box.append(el('div', {class: 'problem', text: e.problem}));
+  const tools = el('div', {class: 'tools'});
+  const i = f.index, list = f.list;
+  tools.append(el('button', {class: 'btn', text: 'Move up', disabled: !(i > 0 && !W.closes(b)) || null, onclick: () => { snapshot(); list.splice(i, 1); list.splice(i - 1, 0, b); changed(); }}));
+  tools.append(el('button', {class: 'btn', text: 'Move down', disabled: !(i < list.length - 1 && !W.closes(list[i + 1])) || null, onclick: () => { snapshot(); list.splice(i, 1); list.splice(i + 1, 0, b); changed(); }}));
+  tools.append(el('button', {class: 'btn danger', text: 'Delete', onclick: () => deleteBlock(b.id)}));
+  box.append(tools);
+}
+
+// ===== Load, undo, autosave =====
+function loadDesign(d, how) {
+  snapshot();
+  design = W.cleanDesign(d) || W.newDesign('My tree'); selected = null; lastCheck = null; $('checkres').replaceChildren();
+  changed();
+  notice(how || '');
+}
+function render() {
+  renderPalette(); renderMemory(); renderTree(); renderAbout();
+  if (INSTRUCTOR) { $('dname').textContent = 'Now: ' + design.name; $('dnote').textContent = design.note || ''; }
+  $('checkbtn').hidden = !design.key;
+}
+
+// ===== Running customers =====
+function setupRun() {
+  $('createbtn').onclick = () => {
+    const open = $('own').hidden;
+    $('own').hidden = !open; $('createbtn').setAttribute('aria-expanded', String(open));
+    if (open) $('ownmsg').focus();
+  };
+}
+function caseLabel(r, i, nums) { return `Customer ${nums ? nums[i] : (r.num || i + 1)}`; }
+async function run() {
+  if (running) return;
+  const v = W.validate(design);
+  if (!v.ok) { notice('Fix the steps in red first: ' + v.problems[0].msg, 'bad'); return; }
+  const key = 'own', nums = null, setName = 'Your own message';
+  const text = $('ownmsg').value.trim();
+  if (!text) { notice('Enter your message first.', 'bad'); return; }
+  const number = $('ownorder').value.trim();
+  const ord = DATA.orders.find(o => o.number === number);
+  if (!ord) { notice(`${number ? `There is no order ${number}.` : 'Enter an order number first.'} Orders you can use: ${DATA.orders.map(o => o.number).join(', ')}.`, 'bad'); return; }
+  const list = [{id: 'own', num: 1, customer: ord.customer, from: ord.number, messages: [text], right: null}];
+  const ctrl = new AbortController(); running = ctrl;
+  $('runbtn').disabled = true; $('stopbtn').disabled = false; notice('');
+  const box = $('results'); box.replaceChildren();
+  const status = $('runstatus');
+  status.textContent = 'Running…';
+  try {
+    const frozen = W.clone(design); // edits made while it runs don't change this run
+    const summary = await W.runCases(frozen, list, {signal: ctrl.signal, onCase: (r, i) => { status.textContent = `Ran ${i + 1} of ${list.length}…`; box.append(renderCase(r, i, nums)); }});
+    lastRun = {setKey: key, setName, design: frozen, summary};
+    status.textContent = '';
+    const head = el('div', {class: 'summary', text: summary.graded ? `${summary.right} of ${summary.graded} right · ${summary.tokens.toLocaleString()} tokens` : `${summary.tokens.toLocaleString()} tokens`});
+    box.prepend(head, el('div', {class: 'bar'}, el('button', {class: 'btn', text: 'Save this run', onclick: () => saveRun(summary, key, frozen)})));
+    if (summary.errors) notice(summary.results.find(r => r.error).error, 'bad');
+  } catch (e) {
+    status.textContent = e.name === 'AbortError' ? 'Stopped.' : '';
+    if (e.name !== 'AbortError') notice(e.message, 'bad');
+  } finally { running = null; $('runbtn').disabled = false; $('stopbtn').disabled = true; }
+}
+function renderCase(r, i, nums) {
+  const cls = r.error ? 'err' : r.grade ? (r.grade.right ? 'right' : 'wrong') : '';
+  const c = el('div', {class: 'case ' + cls});
+  c.append(el('div', {}, el('b', {text: caseLabel(r, i, nums) + ' '}), el('span', {class: 'small', text: r.from ? `(order ${r.from}) ` : ''}),
+    el('span', {class: 'msg', text: r.messages.map(m => `"${m}"`).join(' then ')})));
+  if (r.error) { c.append(el('div', {class: 'out', text: r.error})); return c; }
+  const outs = r.perMessage.length > 1 ? r.perMessage.map((o, k) => `Message ${k + 1}: ${o.text}`).join(' · ') : r.outcome.text;
+  c.append(el('div', {class: 'out'}, el('span', {class: 'mark', text: r.grade ? (r.grade.right ? '✓ Right. ' : '✗ Wrong. ') : ''}), outs));
+  if (r.grade && !r.grade.right) c.append(el('div', {class: 'small', text: `Right: ${r.right.label}. Here: ${r.grade.problems.join('; ')}.`}));
+  const replies = r.records.replies.map(x => `"${x.text}"`).join(' then ');
+  if (replies) c.append(el('div', {class: 'small', text: 'Reply: ' + replies}));
+  const det = el('details', {}, el('summary', {text: 'See the log'}));
+  const t = el('table', {class: 'log'}, el('tr', {}, ['Message', 'Step', 'Who', 'Inputs', 'Output', 'Tokens'].map(h => el('th', {text: h}))));
+  for (const row of r.log) {
+    t.append(el('tr', {}, el('td', {text: row.msg}), el('td', {text: row.step}),
+      el('td', {class: row.who === 'the agent' ? 'who-agent' : row.who === 'a human' ? 'who-human' : '', text: row.who}),
+      el('td', {text: row.inputs}), el('td', {text: row.output}), el('td', {text: row.tokens || ''})));
+  }
+  det.append(t);
+  c.append(det);
+  return c;
+}
+async function saveRun(summary, key, ran) {
+  const name = `${ran.name.split(':')[0]}, own message.json`;
+  try {
+    const res = await fetch('/save-run?name=' + encodeURIComponent(name), {method: 'POST', body: JSON.stringify(W.savedRun(ran, key, summary))});
+    if (!res.ok) throw new Error();
+    const j = await res.json();
+    notice(`Saved as ${j.name} in the saved-runs folder.`, 'good'); loadSavedList();
+  } catch { notice('This run could not be saved: start the page with server.py to save runs.', 'bad'); }
+}
+async function checkMine() {
+  const key = DESIGNS[design.key];
+  if (!key) return;
+  const box = $('checkres');
+  box.replaceChildren(el('div', {class: 'note', text: 'Checking…'}));
+  const r = await W.checkTree(design, key);
+  lastCheck = r;
+  box.replaceChildren(el('div', {class: 'note ' + (r.ok ? 'good' : 'bad'), text: r.message}));
+}
+
+// ===== Saved runs =====
+async function loadSavedList() {
+  const box = $('savedlist');
+  box.replaceChildren();
+  let names = [];
+  try { const r = await fetch('/saved-runs-list'); if (r.ok) names = await r.json(); } catch { /* opened without server.py */ }
+  if (!names.length) { box.append(el('p', {class: 'small', text: 'No saved runs.'})); return; }
+  for (const n of names) box.append(el('button', {class: 'btn', style: 'margin:4px 6px 0 0', text: n.replace(/\.json$/, ''), onclick: () => openSaved(n)}));
+}
+async function openSaved(name) {
+  const view = $('savedview');
+  view.replaceChildren(el('p', {text: 'Opening…'}));
+  try {
+    const r = await fetch('saved-runs/' + encodeURIComponent(name));
+    const run = await r.json();
+    if (run.format !== 'awb-run-1') throw new Error('That run was saved by an older page.');
+    const nums = (DATA.sets[run.set] || {}).nums || null;
+    view.replaceChildren(el('h3', {text: name.replace(/\.json$/, '')}),
+      el('div', {class: 'summary', text: run.summary.graded ? `${run.summary.right} of ${run.summary.graded} right · ${Number(run.summary.tokens).toLocaleString()} tokens · ${run.model} · ${new Date(run.made).toLocaleString()}` : ''}),
+      el('div', {class: 'bar'}, el('button', {class: 'btn', text: 'Load its tree', onclick: () => loadDesign(run.design, `Loaded the tree of the saved run "${name.replace(/\.json$/, '')}".`)})),
+      run.results.map((x, i) => renderCase(x, i, nums)));
+  } catch (e) { view.replaceChildren(el('p', {class: 'small', text: 'Could not open it: ' + (e.message || e)})); }
+}
+
+// ===== Copy all answers =====
+async function copyAll() {
+  const parts = [`Agentic Workflow Builder: ${design.name}`, '', 'My tree:', W.outline(design)];
+  parts.push('', 'Memory: ' + (design.memory.pastCases ? 'on' : 'off'));
+  if (lastCheck) parts.push('', 'Check my tree: ' + lastCheck.message);
+  if (lastRun) {
+    const s = lastRun.summary;
+    parts.push('', `Run: ${lastRun.setName}: ${s.graded ? `${s.right} of ${s.graded} right, ` : ''}${s.tokens} tokens`);
+    s.results.forEach((r, i) => parts.push(`- ${r.messages.join(' / ')} → ${r.error || r.outcome.text}${r.grade ? (r.grade.right ? ' (right)' : ` (wrong; right: ${r.right.label})`) : ''}`));
+  }
+  const text = parts.join('\n');
+  try { await navigator.clipboard.writeText(text); $('copied').textContent = 'Copied.'; }
+  catch { const ta = el('textarea'); ta.value = text; document.body.append(ta); ta.select(); document.execCommand('copy'); ta.remove(); $('copied').textContent = 'Copied.'; }
+  setTimeout(() => { $('copied').textContent = ''; }, 2500);
+}
+
+// ===== Ollama status =====
+async function checkOllama() {
+  try {
+    const r = await fetch('http://127.0.0.1:11434/api/tags');
+    const j = await r.json();
+    const ok = (j.models || []).some(m => m.name === 'qwen3:1.7b' || m.model === 'qwen3:1.7b');
+    $('dot').className = 'dot ' + (ok ? 'ok' : 'bad');
+    $('status').textContent = ok ? 'Ready.' : 'qwen3:1.7b is not in Ollama: ask Claude Code or Codex to run "ollama pull qwen3:1.7b".';
+  } catch {
+    $('dot').className = 'dot bad';
+    $('status').textContent = 'Ollama is not answering: open the Ollama app, then reload this page.';
+  }
+}
+
+// ===== Start =====
+// An empty tree; Check my tree compares it with the key of Exercise 1.
+function emptyTree() { return W.cleanDesign(W.newDesign('My tree')); }
+const productionTree = () => W.cleanDesign(DESIGNS.production);
+function start() {
+  if (INSTRUCTOR) {
+    const ls = $('loadsel');
+    for (const [k, d] of Object.entries(DESIGNS)) ls.append(el('option', {value: k, text: d.name}));
+    $('loadbtn').onclick = () => loadDesign(DESIGNS[ls.value], `Loaded "${DESIGNS[ls.value].name}".`);
+    $('policy').append(...DATA.policy.map(p => el('li', {}, el('b', {text: p.title + ': '}), p.text)));
+  }
+  $('clearbtn').onclick = () => loadDesign(emptyTree(), 'An empty tree. Click the + to add the first block. Undo brings the old tree back.');
+  $('prodbtn').onclick = () => loadDesign(productionTree(), 'Loaded the workflow that runs now (week 2). Undo brings your tree back.');
+  $('undobtn').onclick = () => { const s = undoStack.pop(); if (!s) { notice('Nothing to undo.'); return; } design = JSON.parse(s); selected = null; save(); render(); notice('Undone.'); };
+  $('runbtn').onclick = run;
+  $('stopbtn').onclick = () => { if (running) running.abort(); };
+  $('checkbtn').onclick = checkMine;
+  $('copyall').onclick = copyAll;
+  setupRun();
+  let restored = false;
+  try {
+    const s = localStorage.getItem(STORE_KEY);
+    if (s) { const d = W.cleanDesign(JSON.parse(s)); if (d) { design = d; restored = true; } }
+  } catch { /* no storage */ }
+  if (!restored) design = productionTree(); // the Lecture 9 copy opens with the workflow that runs now (week 2)
+  render();
+  if (restored) notice('Your last tree is back. "Load the workflow that runs now" brings back week 2\'s workflow.');
+  checkOllama();
+  loadSavedList();
+}
+start();
+</script>
+<script src="analyze.js"></script>
+<script>
+// the two tabs at the top: "Build and run" and "Analyze logs"
+const TABS = [["tab-build-btn", "tab-build"], ["tab-analyze-btn", "tab-analyze"]];
+for (const [btn, panel] of TABS) {
+  document.getElementById(btn).onclick = () => {
+    for (const [b, p] of TABS) {
+      document.getElementById(b).setAttribute("aria-selected", String(b === btn));
+      document.getElementById(p).hidden = p !== panel;
+    }
+    // the agent's status bar and "Copy all answers" belong to "Build and run"
+    for (const sel of [".statusbar", ".copyall"]) { const x = document.querySelector(sel); if (x) x.hidden = panel !== "tab-build"; }
+    window.scrollTo(0, 0);
+  };
+}
+</script>
+</body>
+</html>

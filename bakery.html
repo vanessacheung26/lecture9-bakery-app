@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bakery order tracker</title><style>
+:root {color-scheme:light;--ink:#30211d;--muted:#6e534b;--paper:#fffaf3;--line:#e9d8cb;--accent:#8b3e2c}
+* {box-sizing:border-box}
+body {margin:0;background:#f6eee4;color:var(--ink);font:1rem/1.5 system-ui,sans-serif}
+header {background:#47291f;color:var(--paper);padding:2rem max(1rem,calc((100vw - 1120px)/2))}
+h1,h2,h3 {font-family:Georgia,serif;margin:0;line-height:1.15}
+h1 {font-size:clamp(2rem,5vw,3.5rem)}
+h2 {font-size:1.8rem;margin-bottom:1rem}
+h3 {font-size:1.35rem}
+main {max-width:1152px;margin:auto;padding:1.5rem 1rem 3rem}
+.workday {display:flex;align-items:center;flex-wrap:wrap;gap:.75rem;margin:0 0 1.5rem}
+button {border:1px solid var(--line);border-radius:.5rem;padding:.55rem .8rem;
+background:var(--paper);color:var(--ink);font:inherit;text-decoration:none}
+button {background:var(--accent);color:white;border-color:var(--accent)}
+button {cursor:pointer}
+button.secondary {background:var(--paper);color:var(--accent)}
+button:disabled {opacity:.55;cursor:default}
+:focus-visible {outline:3px solid #34715d;outline-offset:3px}
+.columns {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.35fr);gap:1.5rem}
+article,.feedback {background:var(--paper);border:1px solid var(--line);border-radius:.75rem;
+padding:1rem;margin-bottom:.75rem}
+.schedule {display:grid;gap:.75rem;grid-template-columns:repeat(2,minmax(0,1fr))}
+.pickup {margin:0;min-width:0}
+.pickup.latest {grid-column:1 / -1;padding:clamp(1.25rem,3vw,2rem);border-color:var(--accent);
+background:#fff5e8}
+.pickup.latest h3 {font-size:clamp(1.8rem,4vw,2.5rem)}
+.helper {display:flex;flex-wrap:wrap;gap:.4rem .65rem;align-items:center;margin-top:.75rem}
+.spread,li {display:flex;justify-content:space-between;align-items:baseline;gap:.75rem}
+small,.muted {color:var(--muted)}
+.reason {color:#8b241a}
+article p {margin:.55rem 0}
+progress {width:100%;accent-color:#34715d}
+ul {list-style:none;padding:0;margin:.5rem 0 .85rem}
+li {border-bottom:1px solid var(--line);padding:.25rem 0}
+@media(max-width:740px) {.columns {grid-template-columns:1fr}}
+@media(max-width:520px) {.schedule {grid-template-columns:1fr}}
+</style></head><body>
+<header><h1>Bakery order tracker</h1></header>
+<main><form method="post" class="workday">
+      <input type="hidden" name="day" value="2026-11-23">
+      <strong>Mon, Nov 23 · 2026</strong>
+      <button name="action" value="fetch">Fetch Instagram messages</button>
+      <button name="action" value="advance" disabled>Accept all and go to next day</button>
+      <small>Going to the next day closes today’s pickups at 5 PM.</small>
+    </form>
+<div class="columns"><section><h2>Instagram inbox</h2>
+<label id="filter" hidden><input id="pending" type="checkbox"> Show only requested orders</label>
+<div id="messages"><p class="muted">No messages fetched yet.</p></div></section>
+<section><h2>Pickup schedule</h2><div class="schedule"><article class="pickup latest">
+          <div class="spread"><h3>Sun, Nov 29</h3><strong>$80 in orders</strong></div>
+          <p>1h booked · 0h requested · 7h of 8h available</p>
+          <progress aria-label="Baking time booked on Sun, Nov 29" value="60" max="480"></progress>
+          <ul><li><span>#113 Evans<br><small>Accepted, pending delivery</small></span><span>2 dozen cupcakes</span></li></ul>
+          <form method="post" action="/" class="helper">
+            <input type="hidden" name="day" value="2026-11-23">
+            <input type="hidden" name="pickup" value="2026-11-29">
+            <button class="secondary" name="action" value="helper">
+              Request helper · $100
+            </button>
+            <small>Adds 4 hours</small>
+          </form></article><article class="pickup">
+          <div class="spread"><h3>Sat, Nov 28</h3><strong>$280 in orders</strong></div>
+          <p>4h booked · 0h requested · 4h of 8h available</p>
+          <progress aria-label="Baking time booked on Sat, Nov 28" value="240" max="480"></progress>
+          <ul><li><span>#111 Haddad<br><small>Accepted, pending delivery</small></span><span>1 cake</span></li><li><span>#112 Moreau<br><small>Accepted, pending delivery</small></span><span>4 dozen cupcakes</span></li></ul>
+          <form method="post" action="/" class="helper">
+            <input type="hidden" name="day" value="2026-11-23">
+            <input type="hidden" name="pickup" value="2026-11-28">
+            <button class="secondary" name="action" value="helper">
+              Request helper · $100
+            </button>
+            <small>Adds 4 hours</small>
+          </form></article><article class="pickup">
+          <div class="spread"><h3>Fri, Nov 27</h3><strong>$360 in orders</strong></div>
+          <p>5h booked · 0h requested · 3h of 8h available</p>
+          <progress aria-label="Baking time booked on Fri, Nov 27" value="300" max="480"></progress>
+          <ul><li><span>#109 Wong<br><small>Accepted, pending delivery</small></span><span>1 cake</span></li><li><span>#110 Chen<br><small>Accepted, pending delivery</small></span><span>6 dozen cupcakes</span></li></ul>
+          <form method="post" action="/" class="helper">
+            <input type="hidden" name="day" value="2026-11-23">
+            <input type="hidden" name="pickup" value="2026-11-27">
+            <button class="secondary" name="action" value="helper">
+              Request helper · $100
+            </button>
+            <small>Adds 4 hours</small>
+          </form></article><article class="pickup">
+          <div class="spread"><h3>Thu, Nov 26</h3><strong>$440 in orders</strong></div>
+          <p>6h booked · 0h requested · 2h of 8h available</p>
+          <progress aria-label="Baking time booked on Thu, Nov 26" value="360" max="480"></progress>
+          <ul><li><span>#106 Ng<br><small>Accepted, pending delivery</small></span><span>6 dozen cupcakes</span></li><li><span>#107 Brown<br><small>Accepted, pending delivery</small></span><span>2 dozen cupcakes</span></li><li><span>#108 Silva<br><small>Accepted, pending delivery</small></span><span>1 cake</span></li></ul>
+          <form method="post" action="/" class="helper">
+            <input type="hidden" name="day" value="2026-11-23">
+            <input type="hidden" name="pickup" value="2026-11-26">
+            <button class="secondary" name="action" value="helper">
+              Request helper · $100
+            </button>
+            <small>Adds 4 hours</small>
+          </form></article><article class="pickup">
+          <div class="spread"><h3>Wed, Nov 25</h3><strong>$160 in orders</strong></div>
+          <p>2h booked · 0h requested · 6h of 8h available</p>
+          <progress aria-label="Baking time booked on Wed, Nov 25" value="120" max="480"></progress>
+          <ul><li><span>#105 Fox<br><small>Accepted, pending delivery</small></span><span>4 dozen cupcakes</span></li></ul>
+          <form method="post" action="/" class="helper">
+            <input type="hidden" name="day" value="2026-11-23">
+            <input type="hidden" name="pickup" value="2026-11-25">
+            <button class="secondary" name="action" value="helper">
+              Request helper · $100
+            </button>
+            <small>Adds 4 hours</small>
+          </form></article><article class="pickup">
+          <div class="spread"><h3>Tue, Nov 24</h3><strong>$360 in orders</strong></div>
+          <p>5h booked · 0h requested · 3h of 8h available</p>
+          <progress aria-label="Baking time booked on Tue, Nov 24" value="300" max="480"></progress>
+          <ul><li><span>#103 Ali<br><small>Accepted, pending delivery</small></span><span>6 dozen cupcakes</span></li><li><span>#104 Diaz<br><small>Accepted, pending delivery</small></span><span>1 cake</span></li></ul>
+          <form method="post" action="/" class="helper">
+            <input type="hidden" name="day" value="2026-11-23">
+            <input type="hidden" name="pickup" value="2026-11-24">
+            <button class="secondary" name="action" value="helper" disabled>
+              Request helper · $100
+            </button>
+            <small>Requires 2 days’ notice</small>
+          </form></article><article class="pickup">
+          <div class="spread"><h3>Mon, Nov 23</h3><strong>$280 in orders</strong></div>
+          <p>4h booked · 0h requested · 4h of 8h available</p>
+          <progress aria-label="Baking time booked on Mon, Nov 23" value="240" max="480"></progress>
+          <ul><li><span>#101 Kim<br><small>Accepted, pending delivery</small></span><span>4 dozen cupcakes</span></li><li><span>#102 Ross<br><small>Accepted, pending delivery</small></span><span>1 cake</span></li></ul>
+          <form method="post" action="/" class="helper">
+            <input type="hidden" name="day" value="2026-11-23">
+            <input type="hidden" name="pickup" value="2026-11-23">
+            <button class="secondary" name="action" value="helper" disabled>
+              Request helper · $100
+            </button>
+            <small>Requires 2 days’ notice</small>
+          </form></article></div></section></div></main>
+<script>
+const filter = document.querySelector('#filter');
+const pending = document.querySelector('#pending');
+filter.hidden = false;
+pending.addEventListener('change', () => {
+  for (const message of document.querySelectorAll('#messages article')) {
+    message.hidden = pending.checked && message.dataset.status !== 'Requested';
+  }
+});
+</script></body></html>

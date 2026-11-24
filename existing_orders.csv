@@ -1,0 +1,14 @@
+order,customer,item,pickup_day
+#101,Kim,4 dozen cupcakes,Mon 23 Nov
+#102,Ross,1 cake,Mon 23 Nov
+#103,Ali,6 dozen cupcakes,Tue 24 Nov
+#104,Diaz,1 cake,Tue 24 Nov
+#105,Fox,4 dozen cupcakes,Wed 25 Nov
+#106,Ng,6 dozen cupcakes,Thu 26 Nov
+#107,Brown,2 dozen cupcakes,Thu 26 Nov
+#108,Silva,1 cake,Thu 26 Nov
+#109,Wong,1 cake,Fri 27 Nov
+#110,Chen,6 dozen cupcakes,Fri 27 Nov
+#111,Haddad,1 cake,Sat 28 Nov
+#112,Moreau,4 dozen cupcakes,Sat 28 Nov
+#113,Evans,2 dozen cupcakes,Sun 29 Nov

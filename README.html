@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bakery order tracker guide</title>
+<style>
+body { max-width: 44rem; padding: 2rem 1rem; margin: auto; background: #fffaf3; color: #30211d; font: 1rem/1.6 system-ui, sans-serif; }
+h1, h2 { font-family: Georgia, serif; line-height: 1.2; }
+a { color: #8b3e2c; }
+code { background: #f3e7dc; padding: .1em .3em; }
+th, td { text-align: left; padding: .45rem .65rem; border-bottom: 1px solid #e9d8cb; }
+caption { text-align: left; font-weight: bold; }
+</style>
+</head>
+<body>
+<main>
+<h1>Bakery order tracker</h1>
+<h2>Start the app</h2>
+<ol>
+<li>Open Terminal in the folder that contains <code>app.py</code>.</li>
+<li>Run <code>python3 app.py</code>. On Windows, try <code>python app.py</code>.</li>
+<li>Open <a href="http://127.0.0.1:8000/">the bakery tracker in your browser</a>. Leave Terminal open while you work.</li>
+</ol>
+<p>Press Control+C in Terminal to stop the app. Decisions are saved as you go.</p>
+<h2>Work through the Instagram inbox</h2>
+<ol>
+<li>Choose a day from November 23–29, 2026. The inbox shows messages received on that day and earlier. Use the days in order to work through the week as it unfolds.</li>
+<li>Check the pickup schedule for active orders, remaining baking time, and the value of confirmed orders. Pickups extend into December 1.</li>
+<li>Accept or reject each request. When Accept is disabled, the card explains the reason. A change or cancellation needs one active order with the same customer name and pickup date. Once you accept it, the schedule updates immediately.</li>
+<li>Use <strong>Book helper</strong> on a pickup day when you need more capacity. Each day can have one helper.</li>
+</ol>
+<h2>Rules used by the app</h2>
+<table>
+<caption>Products</caption>
+<thead><tr><th>Unit</th><th>Price</th><th>Baking time</th></tr></thead>
+<tbody><tr><td>One dozen cupcakes</td><td>$40</td><td>30 minutes</td></tr>
+<tr><td>One cake</td><td>$120</td><td>2 hours</td></tr></tbody>
+</table>
+<p>Each order contains one product type. Baking time is scheduled on the pickup date. Each day has eight hours of capacity. A $100 helper booking adds four hours of capacity for that date. The schedule shows order revenue and the helper fee separately.</p>
+<p>Two days’ notice means a difference of at least two calendar dates. The app measures customer notice from the date the DM arrived and helper notice from the selected inbox day. Opening another inbox day changes the messages you can see and the date used for helper bookings. Decisions and bookings are shared across all views.</p>
+<h2>Implementation</h2>
+<p><code>app.py</code> uses only the Python standard library. It serves HTML, CSS, and a small JavaScript inbox filter locally. Python checks notice, matching orders, and available capacity before saving changes. The app uses fixed rules and never sends replies to Instagram.</p>
+<p>On first launch, the app creates <code>bakery.db</code> and imports 13 confirmed orders from <code>existing_orders.csv</code> and 25 pending messages from the seven <code>InstagramOrders_*.html</code> files. Keep those files beside <code>app.py</code> for the first launch. Later launches use the saved database. To back up your work, stop the app and copy <code>bakery.db</code>.</p>
+</main>
+</body>
+</html>
